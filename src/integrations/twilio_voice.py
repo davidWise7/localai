@@ -11,9 +11,8 @@ import logging
 from typing import Dict, Any, Optional
 from datetime import datetime
 
-# Twilio imports
+# Twilio imports - FIXED
 from twilio.rest import Client
-from twilio.twiml import TwiML
 from twilio.twiml.voice_response import VoiceResponse, Gather, Say
 
 logger = logging.getLogger(__name__)
@@ -27,9 +26,10 @@ class TwilioVoice:
         self.phone_number = os.getenv('TWILIO_PHONE_NUMBER')
         
         if not all([self.account_sid, self.auth_token, self.phone_number]):
-            raise ValueError("Missing Twilio credentials in environment variables")
-        
-        self.client = Client(self.account_sid, self.auth_token)
+            logger.warning("Twilio credentials not complete - voice features may be limited")
+            self.client = None
+        else:
+            self.client = Client(self.account_sid, self.auth_token)
         
         # Voice settings for Quebec French and English
         self.voices = {
