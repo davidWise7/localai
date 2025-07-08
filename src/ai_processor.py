@@ -1,15 +1,16 @@
-# ai_processor.py - Fixed version with correct Gemini model
+# AI Processing Logic with Bilingual Support
 """
-LocalAI Assistant - Fixed AI Processor
+LocalAI Assistant - Enhanced AI Processor with French/English Support
 Handles intelligent message classification, response generation, and business logic
+Perfect for Quebec/bilingual businesses
 """
 
 import os
 import json
 import re
+import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Tuple
-import logging
 
 # AI/ML imports
 import google.generativeai as genai
@@ -35,7 +36,7 @@ class AIResponse:
     booking_info: Optional[Dict] = None
 
 class AIProcessor:
-    """Main AI processing engine for customer messages"""
+    """Main AI processing engine with bilingual support"""
     
     def __init__(self):
         self.setup_gemini()
@@ -64,42 +65,88 @@ class AIProcessor:
                 raise e2
     
     def _load_intent_keywords(self) -> Dict[str, List[str]]:
-        """Load keyword patterns for intent classification"""
+        """Load keyword patterns for intent classification (bilingual)"""
         return {
             'booking': [
+                # English
                 'appointment', 'book', 'schedule', 'reserve', 'available',
                 'time', 'slot', 'tomorrow', 'today', 'next week',
-                'haircut', 'massage', 'service', 'treatment', 'consultation'
+                'haircut', 'massage', 'service', 'treatment', 'consultation',
+                # French
+                'rendez-vous', 'réserver', 'prendre', 'disponible', 'horaire',
+                'coupe', 'cheveux', 'service', 'traitement', 'consultation',
+                'demain', 'aujourd\'hui', 'semaine prochaine'
             ],
             'faq': [
+                # English
                 'hours', 'open', 'closed', 'location', 'address', 'price',
                 'cost', 'how much', 'phone', 'contact', 'parking',
-                'payment', 'accept', 'credit card', 'cash'
+                'payment', 'accept', 'credit card', 'cash',
+                # French
+                'heures', 'ouvert', 'fermé', 'adresse', 'où', 'prix',
+                'coût', 'combien', 'téléphone', 'contact', 'stationnement',
+                'paiement', 'acceptez', 'carte', 'comptant'
             ],
             'complaint': [
+                # English
                 'disappointed', 'terrible', 'awful', 'worst', 'horrible',
                 'refund', 'money back', 'unsatisfied', 'angry', 'upset',
-                'manager', 'supervisor', 'complaint', 'problem'
+                'manager', 'supervisor', 'complaint', 'problem',
+                # French
+                'déçu', 'terrible', 'affreux', 'pire', 'horrible',
+                'remboursement', 'argent', 'insatisfait', 'fâché', 'contrarié',
+                'gérant', 'superviseur', 'plainte', 'problème'
             ],
             'cancellation': [
-                'cancel', 'reschedule', 'change', 'move', 'different time'
+                # English
+                'cancel', 'reschedule', 'change', 'move', 'different time',
+                # French
+                'annuler', 'reporter', 'changer', 'déplacer', 'autre heure'
             ]
         }
     
     def _load_escalation_triggers(self) -> List[str]:
-        """Load patterns that should trigger human escalation"""
+        """Load patterns that should trigger human escalation (bilingual)"""
         return [
+            # English
             'manager', 'supervisor', 'owner', 'complaint', 'legal',
             'lawsuit', 'attorney', 'refund', 'money back',
-            'terrible', 'awful', 'worst', 'horrible', 'disgusting'
+            'terrible', 'awful', 'worst', 'horrible', 'disgusting',
+            # French
+            'gérant', 'superviseur', 'propriétaire', 'plainte', 'légal',
+            'poursuites', 'avocat', 'remboursement', 'argent',
+            'terrible', 'affreux', 'pire', 'horrible', 'dégoûtant'
         ]
     
+    def detect_language(self, message: str) -> str:
+        """Detect if message is in French or English"""
+        message_lower = message.lower()
+        
+        # French indicators (more comprehensive)
+        french_words = [
+            # Greetings & politeness
+            'bonjour', 'bonsoir', 'salut', 'merci', 'svp', 's\'il vous plaît',
+            # Questions words
+            'comment', 'quand', 'où', 'pourquoi', 'combien', 'quel', 'quelle',
+            # Common words
+            'oui', 'non', 'je', 'nous', 'vous', 'ils', 'elles', 'le', 'la', 'les',
+            'un', 'une', 'des', 'du', 'de', 'et', 'ou', 'mais', 'avec', 'sans',
+            # Business specific
+            'heures', 'ouvert', 'fermé', 'prix', 'coût', 'rendez-vous',
+            'coupe', 'cheveux', 'salon', 'adresse', 'téléphone',
+            # Action words
+            'j\'aimerais', 'j\'ai besoin', 'pouvez-vous', 'êtes-vous',
+            'voudrais', 'cherche', 'veux', 'avoir', 'être'
+        ]
+        
+        # Count French words
+        french_count = sum(1 for word in french_words if word in message_lower)
+        
+        # If 2+ French words, respond in French
+        return 'french' if french_count >= 2 else 'english'
+    
     async def classify_intent(self, message: str, business: Dict) -> MessageIntent:
-        """
-        Classify customer message intent using hybrid approach:
-        1. Keyword matching for speed
-        2. AI classification for accuracy
-        """
+        """Classify customer message intent using hybrid approach (bilingual)"""
         message_lower = message.lower()
         
         # Quick keyword-based classification
@@ -112,7 +159,7 @@ class AIProcessor:
         # If clear keyword match, use it
         if keyword_scores:
             top_intent = max(keyword_scores.keys(), key=lambda k: keyword_scores[k])
-            if keyword_scores[top_intent] > 0.3:  # Strong keyword match
+            if keyword_scores[top_intent] > 0.2:  # Lower threshold for bilingual
                 return MessageIntent(
                     intent=top_intent,
                     confidence=min(keyword_scores[top_intent] * 2, 1.0),
@@ -125,37 +172,67 @@ class AIProcessor:
         return ai_classification
     
     async def _ai_classify_intent(self, message: str, business: Dict) -> MessageIntent:
-        """Use Gemini AI for intent classification"""
+        """Use Gemini AI for intent classification (bilingual)"""
         try:
-            prompt = f"""
-            Classify this customer message for a {business.get('type', 'local business')}:
+            # Detect language for appropriate prompt
+            language = self.detect_language(message)
             
-            Message: "{message}"
+            if language == 'french':
+                prompt = f"""
+                Classifiez ce message client pour un {business.get('type', 'commerce local')}:
+                
+                Message: "{message}"
+                
+                Contexte du commerce:
+                - Type: {business.get('type', 'salon de coiffure')}
+                - Services: {', '.join(business.get('services', []))}
+                - Heures: {business.get('hours', 'Heures d\'affaires standard')}
+                
+                Classifiez l'intention comme une de:
+                1. booking - veut prendre/réserver un rendez-vous ou service
+                2. faq - demande sur heures, prix, lieu, services, politiques
+                3. complaint - exprime insatisfaction, veut remboursement, escalade
+                4. cancellation - veut annuler ou reporter un rendez-vous existant
+                5. general - conversation casual, remerciements, ou intention peu claire
+                
+                Format de réponse (JSON):
+                {{
+                    "intent": "booking|faq|complaint|cancellation|general",
+                    "confidence": 0.0-1.0,
+                    "reason": "explication brève",
+                    "escalate": true/false
+                }}
+                """
+            else:
+                prompt = f"""
+                Classify this customer message for a {business.get('type', 'local business')}:
+                
+                Message: "{message}"
+                
+                Business context:
+                - Type: {business.get('type', 'service business')}
+                - Services: {', '.join(business.get('services', []))}
+                - Hours: {business.get('hours', 'Standard business hours')}
+                
+                Classify the intent as one of:
+                1. booking - wants to schedule/book an appointment or service
+                2. faq - asking about hours, pricing, location, services, policies
+                3. complaint - expressing dissatisfaction, wants refund, escalation
+                4. cancellation - wants to cancel or reschedule existing booking
+                5. general - casual conversation, thanks, or unclear intent
+                
+                Response format (JSON):
+                {{
+                    "intent": "booking|faq|complaint|cancellation|general",
+                    "confidence": 0.0-1.0,
+                    "reason": "brief explanation",
+                    "escalate": true/false
+                }}
+                """
             
-            Business context:
-            - Type: {business.get('type', 'service business')}
-            - Services: {', '.join(business.get('services', []))}
-            - Hours: {business.get('hours', 'Standard business hours')}
-            
-            Classify the intent as one of:
-            1. booking - wants to schedule/book an appointment or service
-            2. faq - asking about hours, pricing, location, services, policies
-            3. complaint - expressing dissatisfaction, wants refund, escalation
-            4. cancellation - wants to cancel or reschedule existing booking
-            5. general - casual conversation, thanks, or unclear intent
-            
-            Response format (JSON):
-            {{
-                "intent": "booking|faq|complaint|cancellation|general",
-                "confidence": 0.0-1.0,
-                "reason": "brief explanation",
-                "escalate": true/false
-            }}
-            """
-            
-            response = await self._safe_generate_content(prompt)
-            if response:
-                result = json.loads(response.strip())
+            response_text = await self._safe_generate_content(prompt)
+            if response_text:
+                result = json.loads(response_text.strip())
                 
                 return MessageIntent(
                     intent=result['intent'],
@@ -164,7 +241,6 @@ class AIProcessor:
                     requires_escalation=result.get('escalate', False)
                 )
             else:
-                # Fallback if AI fails
                 return self._fallback_intent_classification(message)
                 
         except Exception as e:
@@ -181,36 +257,37 @@ class AIProcessor:
             return None
     
     def _fallback_intent_classification(self, message: str) -> MessageIntent:
-        """Fallback intent classification when AI fails"""
+        """Fallback intent classification when AI fails (bilingual)"""
         message_lower = message.lower()
         
-        # Simple keyword-based fallback
-        if any(word in message_lower for word in ['book', 'appointment', 'schedule']):
+        # Bilingual keyword-based fallback
+        if any(word in message_lower for word in ['book', 'appointment', 'schedule', 'rendez-vous', 'réserver']):
             intent = 'booking'
-        elif any(word in message_lower for word in ['hours', 'open', 'price', 'cost']):
+        elif any(word in message_lower for word in ['hours', 'open', 'price', 'cost', 'heures', 'ouvert', 'prix']):
             intent = 'faq'
-        elif any(word in message_lower for word in ['terrible', 'awful', 'complaint']):
+        elif any(word in message_lower for word in ['terrible', 'awful', 'complaint', 'affreux', 'plainte']):
             intent = 'complaint'
         else:
             intent = 'general'
         
         return MessageIntent(
             intent=intent,
-            confidence=0.6,  # Lower confidence for fallback
+            confidence=0.6,
             entities={},
             requires_escalation=self._check_escalation_needed(message)
         )
     
     def _extract_entities(self, message: str, intent: str) -> Dict[str, Any]:
-        """Extract relevant entities based on intent"""
+        """Extract relevant entities based on intent (bilingual)"""
         entities = {}
         
         if intent == 'booking':
-            # Extract time/date references
+            # Extract time/date references (bilingual)
             time_patterns = [
-                r'(\d{1,2}):?(\d{2})?\s*(am|pm)',
+                r'(\d{1,2}):?(\d{2})?\s*(am|pm|h)',
                 r'(tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday)',
-                r'(next week|this week)',
+                r'(demain|aujourd\'hui|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)',
+                r'(next week|this week|semaine prochaine|cette semaine)',
                 r'(\d{1,2})/(\d{1,2})'
             ]
             
@@ -220,228 +297,267 @@ class AIProcessor:
                     entities['time_references'] = matches
                     break
                     
-            # Extract service mentions
-            entities['services'] = [word for word in message.lower().split() 
-                                  if word in ['haircut', 'massage', 'facial', 'manicure', 'pedicure']]
+            # Extract service mentions (bilingual)
+            services = ['haircut', 'massage', 'facial', 'manicure', 'pedicure',
+                       'coupe', 'cheveux', 'massage', 'facial', 'manucure', 'pédicure']
+            entities['services'] = [word for word in message.lower().split() if word in services]
         
         elif intent == 'faq':
-            # Extract question type
-            if any(word in message.lower() for word in ['hour', 'open', 'close']):
+            # Extract question type (bilingual)
+            if any(word in message.lower() for word in ['hour', 'open', 'close', 'heure', 'ouvert', 'fermé']):
                 entities['question_type'] = 'hours'
-            elif any(word in message.lower() for word in ['price', 'cost', 'much']):
+            elif any(word in message.lower() for word in ['price', 'cost', 'much', 'prix', 'coût', 'combien']):
                 entities['question_type'] = 'pricing'
-            elif any(word in message.lower() for word in ['location', 'address', 'where']):
+            elif any(word in message.lower() for word in ['location', 'address', 'where', 'adresse', 'où']):
                 entities['question_type'] = 'location'
         
         return entities
     
     def _check_escalation_needed(self, message: str) -> bool:
-        """Check if message needs human escalation"""
+        """Check if message needs human escalation (bilingual)"""
         message_lower = message.lower()
         return any(trigger in message_lower for trigger in self.escalation_triggers)
     
     async def generate_response(self, message: str, business: Dict, conversation: Dict = None) -> AIResponse:
-        """
-        Generate appropriate response based on message intent and business context
-        """
-        # Classify the message
+        """Generate response with bilingual support"""
+        
+        # Detect customer's language
+        language = self.detect_language(message)
+        
+        # Classify the message intent
         intent_result = await self.classify_intent(message, business)
         
-        # Route to appropriate handler
-        if intent_result.intent == 'booking':
-            return await self._handle_booking_response(message, business, conversation, intent_result)
-        elif intent_result.intent == 'faq':
-            return await self._handle_faq_response(message, business, intent_result)
-        elif intent_result.intent == 'complaint':
-            return await self._handle_complaint_response(message, business, intent_result)
-        elif intent_result.intent == 'cancellation':
-            return await self._handle_cancellation_response(message, business, conversation, intent_result)
+        # Generate response based on language
+        if language == 'french':
+            return await self._generate_french_response(message, business, intent_result)
         else:
-            return await self._handle_general_response(message, business, intent_result)
+            return await self._generate_english_response(message, business, intent_result)
     
-    async def _handle_booking_response(self, message: str, business: Dict, 
-                                     conversation: Dict, intent: MessageIntent) -> AIResponse:
-        """Handle booking-related messages"""
+    async def _generate_french_response(self, message: str, business: Dict, intent: MessageIntent) -> AIResponse:
+        """Generate French responses"""
         try:
-            prompt = f"""
-            Generate a helpful booking response for this customer message:
+            if intent.intent == 'booking':
+                prompt = f"""
+                Répondre en français à ce client qui veut prendre rendez-vous:
+                
+                Client: "{message}"
+                
+                Salon: {business.get('name', 'Salon de Coiffure')}
+                Services: {', '.join(business.get('services', []))}
+                Heures: {business.get('hours', 'Lun-Ven 9h-18h')}
+                
+                Instructions:
+                - Répondre en français seulement
+                - Être amical et professionnel
+                - Si service et heure mentionnés, confirmer
+                - Sinon demander quel service et quel moment
+                - Garder sous 160 caractères pour SMS
+                
+                Réponse:
+                """
             
-            Customer: "{message}"
+            elif intent.intent == 'faq':
+                if 'heure' in message.lower() or 'ouvert' in message.lower():
+                    prompt = f"""
+                    Répondre à cette question sur les heures d'ouverture:
+                    
+                    Question: "{message}"
+                    Heures: {business.get('hours', 'Lun-Sam 9h-19h, Fermé Dimanche')}
+                    
+                    Répondre en français, être clair et utile.
+                    Garder sous 160 caractères.
+                    """
+                
+                elif 'prix' in message.lower() or 'coût' in message.lower() or 'combien' in message.lower():
+                    prompt = f"""
+                    Répondre à cette question sur les prix:
+                    
+                    Question: "{message}"
+                    Services et prix: Coupe 45$-65$, Coloration 85$-150$, Coiffage 35$-50$
+                    
+                    Répondre en français, donner les prix pertinents.
+                    Garder sous 160 caractères.
+                    """
+                
+                elif 'adresse' in message.lower() or 'où' in message.lower():
+                    prompt = f"""
+                    Répondre à cette question sur l'adresse:
+                    
+                    Question: "{message}"
+                    Adresse: {business.get('address', '123 rue Principale')}
+                    
+                    Répondre en français avec l'adresse et info de stationnement.
+                    Garder sous 160 caractères.
+                    """
+                
+                else:
+                    prompt = f"""
+                    Répondre à cette question en français:
+                    
+                    Question: "{message}"
+                    Salon: {business.get('name')}
+                    Adresse: {business.get('address')}
+                    Heures: {business.get('hours')}
+                    
+                    Être utile et professionnel en français.
+                    Garder sous 160 caractères.
+                    """
             
-            Business: {business.get('name', 'Local Business')}
-            Type: {business.get('type', 'service business')}
-            Services: {', '.join(business.get('services', []))}
-            Hours: {business.get('hours', 'Mon-Fri 9am-6pm')}
+            elif intent.intent == 'complaint':
+                prompt = f"""
+                Répondre avec empathie à cette plainte en français:
+                
+                Message: "{message}"
+                Salon: {business.get('name')}
+                
+                Instructions:
+                - Répondre en français seulement
+                - Être empathique et professionnel
+                - S'excuser appropriément
+                - Offrir contact direct pour résoudre
+                - Garder sous 160 caractères
+                
+                Réponse:
+                """
             
-            Guidelines:
-            - Be friendly and professional
-            - If they specified a service and time, check if we need more info
-            - If they're vague, ask for specific service and preferred time
-            - Mention our services if they didn't specify
-            - Keep response under 160 characters if possible for SMS
-            - Include a call-to-action
-            
-            Response:
-            """
+            else:
+                prompt = f"""
+                Répondre à ce message client en français:
+                
+                Message: "{message}"
+                Salon: {business.get('name')}
+                
+                Instructions:
+                - Répondre en français seulement
+                - Être amical et professionnel
+                - Demander comment aider
+                - Garder sous 160 caractères
+                
+                Réponse:
+                """
             
             response_text = await self._safe_generate_content(prompt)
             if not response_text:
-                response_text = f"I'd love to help you book an appointment! What service are you interested in and when would work for you?"
-            
-            # Check if we have enough info to attempt booking
-            has_service = any(service in message.lower() 
-                            for service in business.get('services', []))
-            has_time = bool(intent.entities.get('time_references'))
+                response_text = "Merci de nous contacter! Comment puis-je vous aider aujourd'hui?"
             
             return AIResponse(
                 text=response_text,
                 confidence=intent.confidence,
-                intent='booking',
-                escalate=intent.requires_escalation,
-                booking_info={
-                    'has_service': has_service,
-                    'has_time': has_time,
-                    'needs_more_info': not (has_service and has_time)
-                }
+                intent=intent.intent,
+                escalate=intent.requires_escalation or intent.intent == 'complaint'
             )
             
         except Exception as e:
-            logger.error(f"Booking response error: {str(e)}")
+            logger.error(f"French response error: {str(e)}")
             return AIResponse(
-                text=f"I'd love to help you book an appointment! What service are you interested in and when would work for you?",
-                confidence=0.7,
-                intent='booking'
-            )
-    
-    async def _handle_faq_response(self, message: str, business: Dict, intent: MessageIntent) -> AIResponse:
-        """Handle FAQ-related messages"""
-        try:
-            # Build FAQ context
-            faq_context = f"""
-            Business: {business.get('name', 'Local Business')}
-            Type: {business.get('type', 'service business')}
-            Address: {business.get('address', 'Contact us for location')}
-            Phone: {business.get('phone', 'Contact us for phone')}
-            Hours: {business.get('hours', 'Standard business hours')}
-            Services: {', '.join(business.get('services', []))}
-            Pricing: {business.get('pricing_info', 'Contact us for pricing')}
-            Payment: {business.get('payment_methods', 'Cash and card accepted')}
-            Parking: {business.get('parking_info', 'Street parking available')}
-            """
-            
-            prompt = f"""
-            Answer this customer question about our business:
-            
-            Question: "{message}"
-            
-            Business Information:
-            {faq_context}
-            
-            Guidelines:
-            - Answer directly and helpfully
-            - Use the exact information provided
-            - If info not available, say "Please call us for details"
-            - Be friendly but concise
-            - End with offer to help further
-            
-            Response:
-            """
-            
-            response_text = await self._safe_generate_content(prompt)
-            if not response_text:
-                response_text = f"Thanks for your question! For the most accurate information, please call us at {business.get('phone', 'our main number')}."
-            
-            return AIResponse(
-                text=response_text,
-                confidence=intent.confidence,
-                intent='faq',
-                escalate=intent.requires_escalation
-            )
-            
-        except Exception as e:
-            logger.error(f"FAQ response error: {str(e)}")
-            return AIResponse(
-                text=f"Thanks for your question! For the most accurate information, please call us at {business.get('phone', 'our main number')}.",
+                text="Merci de votre message! Quelqu'un de notre équipe vous contactera bientôt.",
                 confidence=0.6,
-                intent='faq'
+                intent=intent.intent
             )
     
-    async def _handle_complaint_response(self, message: str, business: Dict, intent: MessageIntent) -> AIResponse:
-        """Handle complaint messages with empathy and escalation"""
+    async def _generate_english_response(self, message: str, business: Dict, intent: MessageIntent) -> AIResponse:
+        """Generate English responses (existing logic enhanced)"""
         try:
-            response_text = f"I'm sorry to hear about your experience. This is important to us and I want to make sure it's resolved properly. Someone from our team will contact you within the hour, or you can call us directly at {business.get('phone', 'our main number')}."
+            if intent.intent == 'booking':
+                prompt = f"""
+                Generate a helpful booking response for this customer message:
+                
+                Customer: "{message}"
+                
+                Business: {business.get('name', 'Local Business')}
+                Type: {business.get('type', 'service business')}
+                Services: {', '.join(business.get('services', []))}
+                Hours: {business.get('hours', 'Mon-Fri 9am-6pm')}
+                
+                Guidelines:
+                - Be friendly and professional
+                - If they specified a service and time, acknowledge it
+                - If they're vague, ask for specific service and preferred time
+                - Mention our services if they didn't specify
+                - Keep response under 160 characters for SMS
+                - Include a call-to-action
+                
+                Response:
+                """
             
-            return AIResponse(
-                text=response_text,
-                confidence=intent.confidence,
-                intent='complaint',
-                escalate=True  # Always escalate complaints
-            )
+            elif intent.intent == 'faq':
+                faq_context = f"""
+                Business: {business.get('name', 'Local Business')}
+                Type: {business.get('type', 'service business')}
+                Address: {business.get('address', 'Contact us for location')}
+                Hours: {business.get('hours', 'Standard business hours')}
+                Services: {', '.join(business.get('services', []))}
+                """
+                
+                prompt = f"""
+                Answer this customer question about our business:
+                
+                Question: "{message}"
+                
+                Business Information:
+                {faq_context}
+                
+                Guidelines:
+                - Answer directly and helpfully
+                - Use the exact information provided
+                - If info not available, say "Please call us for details"
+                - Be friendly but concise
+                - Keep under 160 characters
+                
+                Response:
+                """
             
-        except Exception as e:
-            logger.error(f"Complaint response error: {str(e)}")
-            return AIResponse(
-                text=f"I'm sorry to hear about your experience. Someone from our team will contact you within the hour.",
-                confidence=0.8,
-                intent='complaint',
-                escalate=True
-            )
-    
-    async def _handle_cancellation_response(self, message: str, business: Dict, 
-                                          conversation: Dict, intent: MessageIntent) -> AIResponse:
-        """Handle cancellation and rescheduling requests"""
-        try:
-            response_text = "I can help you with that! To cancel or reschedule your appointment, I'll need a few details. What's your name and when was your appointment scheduled?"
+            elif intent.intent == 'complaint':
+                prompt = f"""
+                Respond empathetically to this customer complaint:
+                
+                Customer: "{message}"
+                Business: {business.get('name')}
+                
+                Guidelines:
+                - Acknowledge their concern genuinely
+                - Apologize appropriately 
+                - Explain next steps clearly
+                - Offer direct contact
+                - Professional but warm tone
+                - Keep under 160 characters
+                
+                Response:
+                """
             
-            return AIResponse(
-                text=response_text,
-                confidence=intent.confidence,
-                intent='cancellation',
-                escalate=False
-            )
-            
-        except Exception as e:
-            logger.error(f"Cancellation response error: {str(e)}")
-            return AIResponse(
-                text="I can help you with that! To cancel or reschedule your appointment, I'll need a few details.",
-                confidence=0.7,
-                intent='cancellation'
-            )
-    
-    async def _handle_general_response(self, message: str, business: Dict, intent: MessageIntent) -> AIResponse:
-        """Handle general conversation and unclear intents"""
-        try:
-            prompt = f"""
-            Respond to this customer message professionally:
-            
-            Customer: "{message}"
-            Business: {business.get('name', 'Local Business')}
-            
-            Guidelines:
-            - Be friendly and helpful
-            - Try to understand what they might need
-            - Offer relevant services if appropriate
-            - Ask clarifying questions if unclear
-            - Keep response brief and engaging
-            
-            Response:
-            """
+            else:
+                prompt = f"""
+                Respond to this customer message professionally:
+                
+                Customer: "{message}"
+                Business: {business.get('name', 'Local Business')}
+                
+                Guidelines:
+                - Be friendly and helpful
+                - Try to understand what they might need
+                - Offer relevant services if appropriate
+                - Ask clarifying questions if unclear
+                - Keep response brief and engaging
+                - Keep under 160 characters
+                
+                Response:
+                """
             
             response_text = await self._safe_generate_content(prompt)
             if not response_text:
-                response_text = f"Thanks for reaching out! How can I help you today? You can ask about our services, hours, or book an appointment."
+                response_text = f"Thanks for reaching out! How can I help you today?"
             
             return AIResponse(
                 text=response_text,
                 confidence=intent.confidence,
-                intent='general',
-                escalate=intent.requires_escalation
+                intent=intent.intent,
+                escalate=intent.requires_escalation or intent.intent == 'complaint'
             )
             
         except Exception as e:
-            logger.error(f"General response error: {str(e)}")
+            logger.error(f"English response error: {str(e)}")
             return AIResponse(
-                text=f"Thanks for reaching out! How can I help you today?",
+                text=f"Thanks for your message! Someone from our team will get back to you shortly.",
                 confidence=0.6,
-                intent='general'
+                intent=intent.intent
             )
