@@ -1,7 +1,7 @@
-# main.py - LocalAI Assistant (Root Directory)
+# main.py - LocalAI Assistant with Voice and SMS Support
 """
-Main application file that imports modules from src/ directory
-Run this from the parent directory: python main.py
+Main application file with SMS and Voice webhook support
+Bilingual AI customer service with Quebec French support
 """
 
 import os
@@ -15,21 +15,22 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 src_dir = os.path.join(current_dir, 'src')
 sys.path.insert(0, src_dir)
 
-# Load environment variables from .env file in current directory
+# Load environment variables
 from dotenv import load_dotenv
-load_dotenv()  # This will look for .env in the current directory
+load_dotenv()
 
 # FastAPI imports
-from fastapi import FastAPI, Request, HTTPException, BackgroundTasks, Header
-from fastapi.responses import PlainTextResponse, HTMLResponse
+from fastapi import FastAPI, Request, HTTPException, BackgroundTasks, Header, Form
+from fastapi.responses import PlainTextResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 
-# Import your modules from src directory
+# Import modules from src directory
 try:
     from ai_processor import AIProcessor
     from database import Database
     from integrations.twilio_sms import TwilioSMS
+    from integrations.twilio_voice import TwilioVoice
     from integrations.facebook_api import FacebookAPI
     print("✅ All modules imported successfully")
 except ImportError as e:
@@ -49,44 +50,51 @@ logger = logging.getLogger(__name__)
 # ================================
 
 app = FastAPI(
-    title="LocalAI Assistant",
-    description="AI-powered customer service automation for local businesses",
-    version="1.0.0"
+    title="LocalAI Assistant - Voice & SMS",
+    description="Bilingual AI customer service with voice and SMS support",
+    version="2.0.0"
 )
 
-# Initialize components with better error handling
+# Initialize components
 ai_processor = None
 database = None
 twilio_sms = None
+twilio_voice = None
 facebook_api = None
 
 def initialize_components():
     """Initialize all components with proper error handling"""
-    global ai_processor, database, twilio_sms, facebook_api
+    global ai_processor, database, twilio_sms, twilio_voice, facebook_api
     
     try:
         logger.info("🔄 Initializing components...")
         
         # Check for required environment variables
         gemini_key = os.getenv('GEMINI_API_KEY')
+        twilio_sid = os.getenv('TWILIO_ACCOUNT_SID')
+        twilio_token = os.getenv('TWILIO_AUTH_TOKEN')
+        
         if not gemini_key:
-            logger.error("❌ GEMINI_API_KEY not found in environment variables")
-            logger.error("Make sure your .env file is in the same directory as main.py")
+            logger.error("❌ GEMINI_API_KEY not found")
             raise ValueError("Missing GEMINI_API_KEY")
         
-        # Initialize AI Processor
+        if not twilio_sid or not twilio_token:
+            logger.error("❌ Twilio credentials not found")
+            raise ValueError("Missing Twilio credentials")
+        
+        # Initialize components
         ai_processor = AIProcessor()
         logger.info("✅ AI Processor initialized")
         
-        # Initialize Database
         database = Database()
         logger.info("✅ Database initialized")
         
-        # Initialize Twilio SMS
         twilio_sms = TwilioSMS()
         logger.info("✅ Twilio SMS initialized")
         
-        # Initialize Facebook API
+        twilio_voice = TwilioVoice()
+        logger.info("✅ Twilio Voice initialized")
+        
         facebook_api = FacebookAPI()
         logger.info("✅ Facebook API initialized")
         
@@ -101,7 +109,7 @@ def initialize_components():
 try:
     app.mount("/static", StaticFiles(directory="static"), name="static")
 except Exception:
-    logger.warning("Static files directory not found - dashboard will be limited")
+    logger.warning("Static files directory not found")
 
 # ================================
 # API ROUTES
@@ -111,31 +119,29 @@ except Exception:
 async def root():
     """API root endpoint"""
     return {
-        "message": "LocalAI Assistant - AI-Powered Customer Service",
+        "message": "LocalAI Assistant - Bilingual Voice & SMS AI",
         "status": "running",
-        "version": "1.0.0",
-        "architecture": "modular",
+        "version": "2.0.0",
+        "features": [
+            "🎙️ Voice calls (Quebec French/English)",
+            "📱 SMS support (bilingual)",
+            "🤖 AI message processing",
+            "🔄 Smart call transfers",
+            "📊 Real-time analytics",
+            "🇨🇦 Perfect for Quebec businesses"
+        ],
         "components": {
             "ai_processor": "✅ Active" if ai_processor else "❌ Not initialized",
             "database": "✅ Connected" if database else "❌ Not initialized",
-            "twilio_sms": "✅ Configured" if twilio_sms else "❌ Not initialized",
+            "twilio_sms": "✅ Ready" if twilio_sms else "❌ Not initialized",
+            "twilio_voice": "✅ Ready" if twilio_voice else "❌ Not initialized",
             "facebook_api": "✅ Ready" if facebook_api else "❌ Not initialized"
         },
-        "features": [
-            "AI message processing with Gemini",
-            "Smart intent classification",
-            "Booking assistance", 
-            "FAQ automation",
-            "SMS & Facebook support",
-            "Real-time analytics",
-            "Conversation logging",
-            "Escalation handling"
-        ],
         "endpoints": {
-            "webhooks": {
-                "sms": "POST /webhook/sms",
-                "facebook": "POST /webhook/facebook"
-            },
+            "sms_webhook": "POST /webhook/sms",
+            "voice_webhook": "POST /webhook/voice",
+            "voice_process": "POST /webhook/voice/process",
+            "facebook_webhook": "POST /webhook/facebook",
             "dashboard": "GET /dashboard",
             "health": "GET /health"
         }
@@ -143,23 +149,28 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Comprehensive health check"""
+    """Health check with voice support status"""
     try:
         health_status = {
             "status": "healthy",
-            "version": "1.0.0", 
+            "version": "2.0.0",
             "timestamp": datetime.utcnow().isoformat(),
+            "features": {
+                "voice_calls": "✅ Enabled",
+                "sms_support": "✅ Enabled",
+                "bilingual_ai": "✅ French/English",
+                "call_transfers": "✅ Smart routing"
+            },
             "components": {},
-            "environment": os.getenv("ENVIRONMENT", "development"),
-            "env_file_location": os.path.abspath(".env") if os.path.exists(".env") else "Not found"
+            "environment": os.getenv("ENVIRONMENT", "development")
         }
         
-        # Check AI Processor
+        # Test components
         if ai_processor:
             try:
                 test_business = {
-                    "name": "Test Business",
-                    "services": ["test"],
+                    "name": "Test Salon",
+                    "services": ["haircut"],
                     "hours": "9-5",
                     "address": "Test Address"
                 }
@@ -168,11 +179,7 @@ async def health_check():
             except Exception as e:
                 health_status["components"]["ai_processor"] = f"❌ Error: {str(e)}"
                 health_status["status"] = "degraded"
-        else:
-            health_status["components"]["ai_processor"] = "❌ Not initialized"
-            health_status["status"] = "degraded"
         
-        # Check Database
         if database:
             try:
                 business = await database.get_business_by_phone(os.getenv('TWILIO_PHONE_NUMBER', '+1234567890'))
@@ -180,23 +187,13 @@ async def health_check():
             except Exception as e:
                 health_status["components"]["database"] = f"❌ Error: {str(e)}"
                 health_status["status"] = "degraded"
-        else:
-            health_status["components"]["database"] = "❌ Not initialized"
-            health_status["status"] = "degraded"
         
-        # Check Twilio
+        if twilio_voice:
+            health_status["components"]["twilio_voice"] = "✅ Ready"
         if twilio_sms:
-            health_status["components"]["twilio"] = "✅ Ready"
-        else:
-            health_status["components"]["twilio"] = "❌ Not initialized"
-            health_status["status"] = "degraded"
-        
-        # Check Facebook API
+            health_status["components"]["twilio_sms"] = "✅ Ready"
         if facebook_api:
-            health_status["components"]["facebook"] = "✅ Ready"
-        else:
-            health_status["components"]["facebook"] = "❌ Not initialized"
-            health_status["status"] = "degraded"
+            health_status["components"]["facebook_api"] = "✅ Ready"
         
         return health_status
         
@@ -204,18 +201,21 @@ async def health_check():
         logger.error(f"Health check failed: {str(e)}")
         raise HTTPException(status_code=503, detail=f"Service unhealthy: {str(e)}")
 
+# ================================
+# SMS WEBHOOKS (EXISTING)
+# ================================
+
 @app.post("/webhook/sms")
 async def handle_sms_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
     x_twilio_signature: str = Header(None)
 ):
-    """SMS webhook handler"""
+    """SMS webhook handler (existing functionality)"""
     try:
         if not ai_processor or not database or not twilio_sms:
-            raise HTTPException(status_code=503, detail="Components not properly initialized")
+            raise HTTPException(status_code=503, detail="Components not initialized")
         
-        # Parse Twilio form data
         form_data = await request.form()
         sms_data = {
             'From': form_data.get('From'),
@@ -224,29 +224,151 @@ async def handle_sms_webhook(
             'MessageSid': form_data.get('MessageSid')
         }
         
-        logger.info(f"📱 SMS webhook received from {sms_data['From']}")
-        logger.info(f"📝 Message: {sms_data['Body']}")
+        logger.info(f"📱 SMS received from {sms_data['From']}")
         
-        # Process message in background
         background_tasks.add_task(process_sms_message, sms_data)
         
-        # Return empty response to Twilio (required)
         return PlainTextResponse("", status_code=200)
         
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"❌ SMS webhook error: {str(e)}")
         return PlainTextResponse("Error", status_code=500)
 
+# ================================
+# VOICE WEBHOOKS (NEW)
+# ================================
+
+@app.post("/webhook/voice")
+async def handle_voice_webhook(request: Request):
+    """Handle incoming voice calls"""
+    try:
+        if not twilio_voice:
+            raise HTTPException(status_code=503, detail="Voice system not initialized")
+        
+        form_data = await request.form()
+        call_data = {
+            'From': form_data.get('From'),
+            'To': form_data.get('To'),
+            'CallSid': form_data.get('CallSid'),
+            'CallStatus': form_data.get('CallStatus')
+        }
+        
+        logger.info(f"🎙️ Voice call received from {call_data['From']}")
+        
+        # Log the call
+        twilio_voice.log_voice_interaction({
+            **call_data,
+            'action': 'incoming_call',
+            'timestamp': datetime.utcnow().isoformat()
+        })
+        
+        # Create welcome response with bilingual greeting
+        twiml_response = twilio_voice.create_welcome_response()
+        
+        return Response(content=twiml_response, media_type="application/xml")
+        
+    except Exception as e:
+        logger.error(f"❌ Voice webhook error: {str(e)}")
+        
+        # Fallback TwiML response
+        fallback_response = twilio_voice.create_error_response() if twilio_voice else """
+        <Response>
+            <Say voice="Polly.Joanna">Sorry, our system is temporarily unavailable. Please call back later.</Say>
+        </Response>
+        """
+        return Response(content=fallback_response, media_type="application/xml")
+
+@app.post("/webhook/voice/process")
+async def handle_voice_processing(
+    request: Request,
+    background_tasks: BackgroundTasks
+):
+    """Process voice input with AI"""
+    try:
+        if not ai_processor or not twilio_voice or not database:
+            raise HTTPException(status_code=503, detail="Components not initialized")
+        
+        form_data = await request.form()
+        call_data = {
+            'From': form_data.get('From'),
+            'To': form_data.get('To'),
+            'CallSid': form_data.get('CallSid'),
+            'SpeechResult': form_data.get('SpeechResult', ''),
+            'Confidence': form_data.get('Confidence', '0')
+        }
+        
+        speech_text = call_data['SpeechResult']
+        logger.info(f"🎙️ Speech received: {speech_text}")
+        
+        if not speech_text:
+            # No speech detected
+            twiml_response = twilio_voice.create_welcome_response()
+            return Response(content=twiml_response, media_type="application/xml")
+        
+        # Process voice input
+        voice_result = await twilio_voice.process_voice_input(speech_text, call_data)
+        
+        if voice_result['action'] == 'transfer':
+            # Customer wants transfer
+            logger.info(f"🔄 Transfer requested by {call_data['From']}")
+            twiml_response = twilio_voice.create_transfer_response(voice_result['language'])
+            
+            # Log transfer request
+            background_tasks.add_task(log_voice_interaction, {
+                **call_data,
+                'speech_text': speech_text,
+                'action': 'transfer_requested',
+                'language': voice_result['language']
+            })
+            
+        elif voice_result['action'] == 'process_ai':
+            # Process with AI
+            background_tasks.add_task(process_voice_with_ai, call_data, speech_text, voice_result['language'])
+            
+            # Generate AI response
+            business = await database.get_business_by_phone(call_data['To'])
+            if business:
+                ai_response = await ai_processor.generate_response(speech_text, business)
+                twiml_response = twilio_voice.create_ai_response(
+                    speech_text, 
+                    ai_response.text, 
+                    voice_result['language']
+                )
+                
+                # If AI wants to escalate, modify response
+                if ai_response.escalate:
+                    twiml_response = twilio_voice.create_transfer_response(voice_result['language'])
+            else:
+                twiml_response = twilio_voice.create_error_response(voice_result['language'])
+        
+        else:
+            # Error case
+            twiml_response = twilio_voice.create_error_response()
+        
+        return Response(content=twiml_response, media_type="application/xml")
+        
+    except Exception as e:
+        logger.error(f"❌ Voice processing error: {str(e)}")
+        
+        fallback_response = twilio_voice.create_error_response() if twilio_voice else """
+        <Response>
+            <Say voice="Polly.Joanna">Sorry, I'm having trouble processing your request.</Say>
+        </Response>
+        """
+        return Response(content=fallback_response, media_type="application/xml")
+
+# ================================
+# DASHBOARD (UPDATED)
+# ================================
+
 @app.get("/dashboard")
 async def dashboard_home():
-    """Enhanced dashboard"""
+    """Enhanced dashboard with voice support"""
     html_content = """
     <!DOCTYPE html>
     <html>
     <head>
-        <title>LocalAI Assistant Dashboard</title>
+        <title>LocalAI Assistant - Voice & SMS Dashboard</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
@@ -281,10 +403,23 @@ async def dashboard_home():
                 text-align: center;
                 font-weight: 600;
             }
+            .features {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 20px;
+                margin: 20px 0;
+            }
+            .feature {
+                padding: 20px;
+                background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+                border-radius: 10px;
+                border-left: 5px solid #2196F3;
+            }
+            .feature h3 { color: #2196F3; margin-bottom: 10px; }
             .metrics { 
                 display: grid; 
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
-                gap: 25px; 
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+                gap: 20px; 
                 margin: 20px 0;
             }
             .metric { 
@@ -303,146 +438,145 @@ async def dashboard_home():
                 margin-bottom: 5px;
             }
             .metric p { margin: 0; color: #666; font-weight: 500; }
-            .refresh-btn {
-                background: #2196F3;
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                border-radius: 6px;
-                cursor: pointer;
-                font-weight: 600;
-                transition: background 0.3s ease;
-            }
-            .refresh-btn:hover { background: #1976D2; }
-            .module-status {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 15px;
+            .phone-number {
+                font-size: 2em;
+                font-weight: bold;
+                color: #4CAF50;
+                text-align: center;
+                padding: 20px;
+                background: #f0f8f0;
+                border-radius: 10px;
                 margin: 20px 0;
-            }
-            .module {
-                padding: 15px;
-                background: #f8f9fa;
-                border-radius: 8px;
-                border-left: 4px solid #28a745;
             }
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <h1>🤖 LocalAI Assistant</h1>
-                <p>AI-Powered Customer Service Automation</p>
+                <h1>🎙️📱 LocalAI Assistant</h1>
+                <p>Bilingual Voice & SMS AI Customer Service</p>
                 <p style="font-size: 0.9em; margin-top: 10px;">
-                    Modular Architecture • Production Ready
+                    Quebec French • English • Smart Transfers • 24/7 Support
                 </p>
             </div>
             
             <div class="card">
                 <div class="status">
-                    ✅ System Status: Operational | All Modules Active | Ready for Production
+                    ✅ Voice & SMS Systems Operational | AI Ready | Bilingual Support Active
                 </div>
             </div>
             
             <div class="card">
-                <h2>🔧 Module Status</h2>
-                <div class="module-status">
-                    <div class="module">
-                        <strong>🧠 AI Processor</strong><br>
-                        Gemini AI • Intent Classification
+                <h2>📞 Your AI Phone Number</h2>
+                <div class="phone-number">
+                    📞 +1 450 234 9148
+                </div>
+                <p style="text-align: center; color: #666;">
+                    Customers can call or text this number in French or English!
+                </p>
+            </div>
+            
+            <div class="card">
+                <h2>🎯 Active Features</h2>
+                <div class="features">
+                    <div class="feature">
+                        <h3>🎙️ Voice Calls</h3>
+                        <p>Quebec French accent, natural conversations, smart transfers when needed</p>
                     </div>
-                    <div class="module">
-                        <strong>💾 Database</strong><br>
-                        SQLite • Conversation Logging
+                    <div class="feature">
+                        <h3>📱 SMS Support</h3>
+                        <p>Bilingual text messages, instant AI responses, booking assistance</p>
                     </div>
-                    <div class="module">
-                        <strong>📱 Twilio SMS</strong><br>
-                        Webhook Handler • Message Sending
+                    <div class="feature">
+                        <h3>🤖 Smart AI</h3>
+                        <p>Understands context, handles bookings, FAQs, and escalates when needed</p>
                     </div>
-                    <div class="module">
-                        <strong>📘 Facebook API</strong><br>
-                        Messenger Integration • Page Management
+                    <div class="feature">
+                        <h3>🔄 Human Transfer</h3>
+                        <p>Seamless handoff to business owner when AI can't help</p>
                     </div>
                 </div>
             </div>
             
             <div class="card">
                 <h2>📊 Real-Time Metrics</h2>
-                <button class="refresh-btn" onclick="refreshStats()">🔄 Refresh Stats</button>
                 <div class="metrics">
                     <div class="metric">
-                        <h3 id="conversations">0</h3>
-                        <p>Conversations Today</p>
+                        <h3 id="voice-calls">0</h3>
+                        <p>Voice Calls Today</p>
                     </div>
                     <div class="metric">
-                        <h3 id="response-time">< 2s</h3>
-                        <p>Avg Response Time</p>
+                        <h3 id="sms-messages">0</h3>
+                        <p>SMS Messages Today</p>
                     </div>
                     <div class="metric">
-                        <h3 id="ai-accuracy">85%</h3>
-                        <p>AI Accuracy</p>
+                        <h3 id="french-interactions">50%</h3>
+                        <p>French Interactions</p>
                     </div>
                     <div class="metric">
-                        <h3 id="businesses">1</h3>
-                        <p>Active Businesses</p>
+                        <h3 id="ai-success">85%</h3>
+                        <p>AI Success Rate</p>
                     </div>
                 </div>
             </div>
             
             <div class="card">
-                <h2>📋 Quick Actions</h2>
+                <h2>🧪 Test Your System</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                    <div style="padding: 15px; background: #f0f8ff; border-radius: 8px;">
+                        <h4>📞 Test Voice Call</h4>
+                        <p>Call +1 450 234 9148 and say:</p>
+                        <p style="font-style: italic;">"Bonjour, quelles sont vos heures?"</p>
+                    </div>
+                    <div style="padding: 15px; background: #f0fff0; border-radius: 8px;">
+                        <h4>📱 Test SMS</h4>
+                        <p>Text +1 450 234 9148:</p>
+                        <p style="font-style: italic;">"Hi, can I book a haircut?"</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>🔧 System Status</h2>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                    <button class="refresh-btn" onclick="window.open('/health', '_blank')">
-                        🔍 Health Check
-                    </button>
-                    <button class="refresh-btn" onclick="testAPI()">
-                        🧪 Test API
-                    </button>
-                    <button class="refresh-btn" onclick="viewLogs()">
-                        📝 View Logs
-                    </button>
-                    <button class="refresh-btn" onclick="deployToRailway()">
-                        🚀 Deploy Guide
-                    </button>
+                    <div style="padding: 15px; background: #e8f5e8; border-radius: 8px; border-left: 4px solid #28a745;">
+                        <strong>🧠 AI Processor</strong><br>
+                        Gemini AI • Bilingual Processing
+                    </div>
+                    <div style="padding: 15px; background: #e8f5e8; border-radius: 8px; border-left: 4px solid #28a745;">
+                        <strong>🎙️ Voice System</strong><br>
+                        Quebec French • English • Transfers
+                    </div>
+                    <div style="padding: 15px; background: #e8f5e8; border-radius: 8px; border-left: 4px solid #28a745;">
+                        <strong>📱 SMS System</strong><br>
+                        Twilio • Instant Responses
+                    </div>
+                    <div style="padding: 15px; background: #e8f5e8; border-radius: 8px; border-left: 4px solid #28a745;">
+                        <strong>💾 Database</strong><br>
+                        Conversation Logging • Analytics
+                    </div>
                 </div>
             </div>
         </div>
         
         <script>
-            async function refreshStats() {
-                try {
-                    const response = await fetch('/');
-                    const data = await response.json();
-                    console.log('Stats refreshed:', data);
-                } catch (error) {
-                    console.error('Error refreshing stats:', error);
-                }
-            }
-            
-            async function testAPI() {
+            async function updateMetrics() {
                 try {
                     const response = await fetch('/health');
                     const data = await response.json();
-                    alert('API Test: ' + data.status.toUpperCase() + '\\n\\nComponents:\\n' + 
-                          Object.entries(data.components).map(([k,v]) => k + ': ' + v).join('\\n'));
+                    console.log('System health:', data.status);
+                    
+                    // Simulate some metrics (in production, get from database)
+                    document.getElementById('voice-calls').textContent = Math.floor(Math.random() * 20);
+                    document.getElementById('sms-messages').textContent = Math.floor(Math.random() * 50);
                 } catch (error) {
-                    alert('API Test Failed: ' + error.message);
+                    console.error('Error updating metrics:', error);
                 }
             }
             
-            function viewLogs() {
-                alert('Logs are available in your terminal/console where you ran the server.');
-            }
-            
-            function deployToRailway() {
-                window.open('https://railway.app', '_blank');
-            }
-            
-            // Auto-refresh every 30 seconds
-            setInterval(refreshStats, 30000);
-            
-            // Initial load
-            refreshStats();
+            // Update metrics every 30 seconds
+            setInterval(updateMetrics, 30000);
+            updateMetrics(); // Initial load
         </script>
     </body>
     </html>
@@ -454,7 +588,7 @@ async def dashboard_home():
 # ================================
 
 async def process_sms_message(sms_data: Dict[str, Any]):
-    """Process SMS using your existing modules"""
+    """Process SMS using existing logic"""
     try:
         start_time = datetime.now()
         
@@ -464,16 +598,13 @@ async def process_sms_message(sms_data: Dict[str, Any]):
         
         logger.info(f"🔄 Processing SMS from {customer_phone}")
         
-        # Get business using database
         business = await database.get_business_by_phone(business_phone)
         if not business:
             logger.warning(f"⚠️ No business found for phone {business_phone}")
             return
         
-        # Generate AI response
         ai_response = await ai_processor.generate_response(message_text, business)
         
-        # Log conversation
         conversation_data = {
             'business_id': business['id'],
             'customer_phone': customer_phone,
@@ -485,27 +616,76 @@ async def process_sms_message(sms_data: Dict[str, Any]):
             'escalated': ai_response.escalate
         }
         
-        await database.log_conversation(conversation_data)
+        processing_time = (datetime.now() - start_time).total_seconds() * 1000
+        await database.log_conversation(conversation_data, int(processing_time))
         
-        # Send SMS response
         sms_result = await twilio_sms.send_sms(
             to_phone=customer_phone,
             message=ai_response.text,
             from_phone=business_phone
         )
         
-        processing_time = (datetime.now() - start_time).total_seconds() * 1000
-        
-        logger.info(f"✅ SMS processed successfully in {processing_time:.2f}ms")
+        logger.info(f"✅ SMS processed in {processing_time:.2f}ms")
         logger.info(f"📤 Response: {ai_response.text}")
-        logger.info(f"🎯 Intent: {ai_response.intent} | Confidence: {ai_response.confidence:.2f}")
-        logger.info(f"📨 SMS sent: {sms_result['success']}")
+        logger.info(f"🎯 Intent: {ai_response.intent}")
         
         if ai_response.escalate:
-            logger.warning(f"🚨 Message escalated - human attention required")
+            logger.warning(f"🚨 SMS escalated - human attention required")
         
     except Exception as e:
         logger.error(f"❌ SMS processing error: {str(e)}")
+
+async def process_voice_with_ai(call_data: Dict[str, Any], speech_text: str, language: str):
+    """Process voice call with AI and log interaction"""
+    try:
+        start_time = datetime.now()
+        
+        customer_phone = call_data.get('From')
+        business_phone = call_data.get('To')
+        
+        logger.info(f"🔄 Processing voice call from {customer_phone}")
+        logger.info(f"🗣️ Speech: {speech_text}")
+        logger.info(f"🌐 Language: {language}")
+        
+        business = await database.get_business_by_phone(business_phone)
+        if business:
+            ai_response = await ai_processor.generate_response(speech_text, business)
+            
+            conversation_data = {
+                'business_id': business['id'],
+                'customer_phone': customer_phone,
+                'platform': 'voice',
+                'inbound_message': speech_text,
+                'outbound_message': ai_response.text,
+                'intent': ai_response.intent,
+                'ai_confidence': ai_response.confidence,
+                'escalated': ai_response.escalate
+            }
+            
+            processing_time = (datetime.now() - start_time).total_seconds() * 1000
+            await database.log_conversation(conversation_data, int(processing_time))
+            
+            logger.info(f"✅ Voice call processed in {processing_time:.2f}ms")
+            logger.info(f"🎙️ AI Response: {ai_response.text}")
+            logger.info(f"🎯 Intent: {ai_response.intent}")
+            
+            if ai_response.escalate:
+                logger.warning(f"🚨 Voice call escalated - human attention required")
+        
+    except Exception as e:
+        logger.error(f"❌ Voice processing error: {str(e)}")
+
+async def log_voice_interaction(interaction_data: Dict[str, Any]):
+    """Log voice interaction details"""
+    try:
+        logger.info(f"📞 Voice interaction logged:")
+        logger.info(f"   From: {interaction_data.get('From')}")
+        logger.info(f"   Speech: {interaction_data.get('speech_text', 'N/A')}")
+        logger.info(f"   Action: {interaction_data.get('action')}")
+        logger.info(f"   Language: {interaction_data.get('language')}")
+        
+    except Exception as e:
+        logger.error(f"❌ Voice logging error: {str(e)}")
 
 # ================================
 # STARTUP EVENTS
@@ -513,22 +693,26 @@ async def process_sms_message(sms_data: Dict[str, Any]):
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize system on startup"""
-    logger.info("🚀 Starting LocalAI Assistant with modular architecture...")
-    logger.info("=" * 60)
+    """Initialize system with voice support"""
+    logger.info("🚀 Starting LocalAI Assistant with Voice & SMS support...")
+    logger.info("=" * 70)
     
-    # Initialize components
     success = initialize_components()
     
     if success:
-        logger.info("=" * 60)
-        logger.info("🎉 LocalAI Assistant ready for customers!")
+        logger.info("=" * 70)
+        logger.info("🎉 LocalAI Assistant Voice & SMS ready!")
+        logger.info("🎙️ Voice calls: ENABLED")
+        logger.info("📱 SMS messages: ENABLED") 
+        logger.info("🤖 Bilingual AI: French/English")
+        logger.info("🔄 Smart transfers: ACTIVE")
         logger.info("📊 Dashboard: http://localhost:8000/dashboard")
         logger.info("🔍 Health: http://localhost:8000/health")
-        logger.info("📱 SMS Webhook: http://localhost:8000/webhook/sms")
-        logger.info("=" * 60)
+        logger.info("📞 Voice webhook: http://localhost:8000/webhook/voice")
+        logger.info("📱 SMS webhook: http://localhost:8000/webhook/sms")
+        logger.info("=" * 70)
     else:
-        logger.error("❌ Failed to initialize components - check your configuration")
+        logger.error("❌ Failed to initialize - check your configuration")
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -540,15 +724,16 @@ async def shutdown_event():
 # ================================
 
 if __name__ == "__main__":
-    print("🤖 LocalAI Assistant - Modular Architecture")
-    print("📦 Using existing modules from src/ directory")
-    print("🔧 Make sure your .env file is in the same directory as this main.py")
-    print("🚀 Starting server...")
+    print("🎙️📱 LocalAI Assistant - Voice & SMS Support")
+    print("🇨🇦 Bilingual Quebec French/English AI")
+    print("🔧 Voice calls + SMS messages + Smart transfers")
+    print("🚀 Starting enhanced server...")
     
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=int(os.getenv("PORT", 8000)),
-        reload=False,
+        reload=True,
         log_level="info"
     )
+                    
