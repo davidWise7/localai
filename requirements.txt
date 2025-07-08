@@ -11,7 +11,7 @@ python-dotenv==1.0.0
 google-generativeai==0.3.2
 
 # Database
-sqlite3  # Built into Python
+# sqlite3 is built into Python - DO NOT include it here
 sqlalchemy==2.0.23
 
 # Twilio (SMS + Voice)
