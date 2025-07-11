@@ -1,6 +1,6 @@
-# main.py - LocalAI Assistant with Voice and SMS Support
+# main.py - LocalAI Assistant with Professional Dashboard
 """
-Main application file with SMS and Voice webhook support
+Main application file with SMS, Voice webhooks, and Professional Dashboard
 Bilingual AI customer service with Quebec French support
 """
 
@@ -32,6 +32,7 @@ try:
     from integrations.twilio_sms import TwilioSMS
     from integrations.twilio_voice import TwilioVoice
     from integrations.facebook_api import FacebookAPI
+    from dashboard_api import dashboard_router
     print("✅ All modules imported successfully")
 except ImportError as e:
     print(f"❌ Import error: {e}")
@@ -50,10 +51,13 @@ logger = logging.getLogger(__name__)
 # ================================
 
 app = FastAPI(
-    title="LocalAI Assistant - Voice & SMS",
-    description="Bilingual AI customer service with voice and SMS support",
-    version="2.0.0"
+    title="LocalAI Assistant - Professional Dashboard",
+    description="Bilingual AI customer service with professional business management",
+    version="2.1.0"
 )
+
+# Include dashboard router
+app.include_router(dashboard_router)
 
 # Initialize components
 ai_processor = None
@@ -119,15 +123,16 @@ except Exception:
 async def root():
     """API root endpoint"""
     return {
-        "message": "LocalAI Assistant - Bilingual Voice & SMS AI",
+        "message": "LocalAI Assistant - Professional Business Management",
         "status": "running",
-        "version": "2.0.0",
+        "version": "2.1.0",
         "features": [
             "🎙️ Voice calls (Quebec French/English)",
             "📱 SMS support (bilingual)",
             "🤖 AI message processing",
             "🔄 Smart call transfers",
-            "📊 Real-time analytics",
+            "📊 Professional dashboard",
+            "📈 Real-time analytics",
             "🇨🇦 Perfect for Quebec businesses"
         ],
         "components": {
@@ -135,31 +140,34 @@ async def root():
             "database": "✅ Connected" if database else "❌ Not initialized",
             "twilio_sms": "✅ Ready" if twilio_sms else "❌ Not initialized",
             "twilio_voice": "✅ Ready" if twilio_voice else "❌ Not initialized",
-            "facebook_api": "✅ Ready" if facebook_api else "❌ Not initialized"
+            "facebook_api": "✅ Ready" if facebook_api else "❌ Not initialized",
+            "dashboard": "✅ Professional Interface Available"
         },
         "endpoints": {
+            "dashboard": "GET /dashboard/web - Professional business management interface",
             "sms_webhook": "POST /webhook/sms",
-            "voice_webhook": "POST /webhook/voice",
+            "voice_webhook": "POST /webhook/voice", 
             "voice_process": "POST /webhook/voice/process",
             "facebook_webhook": "POST /webhook/facebook",
-            "dashboard": "GET /dashboard",
             "health": "GET /health"
         }
     }
 
 @app.get("/health")
 async def health_check():
-    """Health check with voice support status"""
+    """Health check with dashboard support"""
     try:
         health_status = {
             "status": "healthy",
-            "version": "2.0.0",
+            "version": "2.1.0",
             "timestamp": datetime.utcnow().isoformat(),
             "features": {
                 "voice_calls": "✅ Enabled",
                 "sms_support": "✅ Enabled",
                 "bilingual_ai": "✅ French/English",
-                "call_transfers": "✅ Smart routing"
+                "call_transfers": "✅ Smart routing",
+                "dashboard": "✅ Professional Interface",
+                "real_time_analytics": "✅ Live metrics"
             },
             "components": {},
             "environment": os.getenv("ENVIRONMENT", "development")
@@ -202,6 +210,42 @@ async def health_check():
         raise HTTPException(status_code=503, detail=f"Service unhealthy: {str(e)}")
 
 # ================================
+# DASHBOARD REDIRECT
+# ================================
+
+@app.get("/dashboard")
+async def dashboard_redirect():
+    """Redirect old dashboard to new professional interface"""
+    return HTMLResponse(content="""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Redirecting to Professional Dashboard</title>
+        <meta http-equiv="refresh" content="0;url=/dashboard/web">
+        <style>
+            body { 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                display: flex; align-items: center; justify-content: center; 
+                min-height: 100vh; margin: 0; background: #f8fafc;
+            }
+            .redirect-message {
+                text-align: center; padding: 2rem;
+                background: white; border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="redirect-message">
+            <h2>🚀 Redirecting to Professional Dashboard...</h2>
+            <p>You're being redirected to the new business management interface.</p>
+            <p><a href="/dashboard/web">Click here if you're not redirected automatically</a></p>
+        </div>
+    </body>
+    </html>
+    """)
+
+# ================================
 # SMS WEBHOOKS (EXISTING)
 # ================================
 
@@ -235,7 +279,7 @@ async def handle_sms_webhook(
         return PlainTextResponse("Error", status_code=500)
 
 # ================================
-# VOICE WEBHOOKS (NEW)
+# VOICE WEBHOOKS (EXISTING)
 # ================================
 
 @app.post("/webhook/voice")
@@ -358,232 +402,6 @@ async def handle_voice_processing(
         return Response(content=fallback_response, media_type="application/xml")
 
 # ================================
-# DASHBOARD (UPDATED)
-# ================================
-
-@app.get("/dashboard")
-async def dashboard_home():
-    """Enhanced dashboard with voice support"""
-    html_content = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>LocalAI Assistant - Voice & SMS Dashboard</title>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { 
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                min-height: 100vh;
-                color: #333;
-            }
-            .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-            .header { 
-                text-align: center; 
-                color: white; 
-                margin-bottom: 30px;
-                padding: 40px 0;
-            }
-            .header h1 { font-size: 3em; margin-bottom: 10px; }
-            .header p { font-size: 1.2em; opacity: 0.9; }
-            .card { 
-                background: white; 
-                padding: 25px; 
-                margin: 20px 0; 
-                border-radius: 12px; 
-                box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            }
-            .status { 
-                padding: 15px; 
-                background: linear-gradient(135deg, #4CAF50, #45a049);
-                border-radius: 8px; 
-                color: white;
-                text-align: center;
-                font-weight: 600;
-            }
-            .features {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-                gap: 20px;
-                margin: 20px 0;
-            }
-            .feature {
-                padding: 20px;
-                background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-                border-radius: 10px;
-                border-left: 5px solid #2196F3;
-            }
-            .feature h3 { color: #2196F3; margin-bottom: 10px; }
-            .metrics { 
-                display: grid; 
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-                gap: 20px; 
-                margin: 20px 0;
-            }
-            .metric { 
-                text-align: center; 
-                padding: 20px;
-                background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-                border-radius: 10px;
-                transition: transform 0.3s ease;
-            }
-            .metric:hover { transform: translateY(-5px); }
-            .metric h3 { 
-                margin: 0; 
-                font-size: 2.5em; 
-                color: #2196F3; 
-                font-weight: 700;
-                margin-bottom: 5px;
-            }
-            .metric p { margin: 0; color: #666; font-weight: 500; }
-            .phone-number {
-                font-size: 2em;
-                font-weight: bold;
-                color: #4CAF50;
-                text-align: center;
-                padding: 20px;
-                background: #f0f8f0;
-                border-radius: 10px;
-                margin: 20px 0;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>🎙️📱 LocalAI Assistant</h1>
-                <p>Bilingual Voice & SMS AI Customer Service</p>
-                <p style="font-size: 0.9em; margin-top: 10px;">
-                    Quebec French • English • Smart Transfers • 24/7 Support
-                </p>
-            </div>
-            
-            <div class="card">
-                <div class="status">
-                    ✅ Voice & SMS Systems Operational | AI Ready | Bilingual Support Active
-                </div>
-            </div>
-            
-            <div class="card">
-                <h2>📞 Your AI Phone Number</h2>
-                <div class="phone-number">
-                    📞 +1 450 234 9148
-                </div>
-                <p style="text-align: center; color: #666;">
-                    Customers can call or text this number in French or English!
-                </p>
-            </div>
-            
-            <div class="card">
-                <h2>🎯 Active Features</h2>
-                <div class="features">
-                    <div class="feature">
-                        <h3>🎙️ Voice Calls</h3>
-                        <p>Quebec French accent, natural conversations, smart transfers when needed</p>
-                    </div>
-                    <div class="feature">
-                        <h3>📱 SMS Support</h3>
-                        <p>Bilingual text messages, instant AI responses, booking assistance</p>
-                    </div>
-                    <div class="feature">
-                        <h3>🤖 Smart AI</h3>
-                        <p>Understands context, handles bookings, FAQs, and escalates when needed</p>
-                    </div>
-                    <div class="feature">
-                        <h3>🔄 Human Transfer</h3>
-                        <p>Seamless handoff to business owner when AI can't help</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="card">
-                <h2>📊 Real-Time Metrics</h2>
-                <div class="metrics">
-                    <div class="metric">
-                        <h3 id="voice-calls">0</h3>
-                        <p>Voice Calls Today</p>
-                    </div>
-                    <div class="metric">
-                        <h3 id="sms-messages">0</h3>
-                        <p>SMS Messages Today</p>
-                    </div>
-                    <div class="metric">
-                        <h3 id="french-interactions">50%</h3>
-                        <p>French Interactions</p>
-                    </div>
-                    <div class="metric">
-                        <h3 id="ai-success">85%</h3>
-                        <p>AI Success Rate</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="card">
-                <h2>🧪 Test Your System</h2>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-                    <div style="padding: 15px; background: #f0f8ff; border-radius: 8px;">
-                        <h4>📞 Test Voice Call</h4>
-                        <p>Call +1 450 234 9148 and say:</p>
-                        <p style="font-style: italic;">"Bonjour, quelles sont vos heures?"</p>
-                    </div>
-                    <div style="padding: 15px; background: #f0fff0; border-radius: 8px;">
-                        <h4>📱 Test SMS</h4>
-                        <p>Text +1 450 234 9148:</p>
-                        <p style="font-style: italic;">"Hi, can I book a haircut?"</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="card">
-                <h2>🔧 System Status</h2>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                    <div style="padding: 15px; background: #e8f5e8; border-radius: 8px; border-left: 4px solid #28a745;">
-                        <strong>🧠 AI Processor</strong><br>
-                        Gemini AI • Bilingual Processing
-                    </div>
-                    <div style="padding: 15px; background: #e8f5e8; border-radius: 8px; border-left: 4px solid #28a745;">
-                        <strong>🎙️ Voice System</strong><br>
-                        Quebec French • English • Transfers
-                    </div>
-                    <div style="padding: 15px; background: #e8f5e8; border-radius: 8px; border-left: 4px solid #28a745;">
-                        <strong>📱 SMS System</strong><br>
-                        Twilio • Instant Responses
-                    </div>
-                    <div style="padding: 15px; background: #e8f5e8; border-radius: 8px; border-left: 4px solid #28a745;">
-                        <strong>💾 Database</strong><br>
-                        Conversation Logging • Analytics
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <script>
-            async function updateMetrics() {
-                try {
-                    const response = await fetch('/health');
-                    const data = await response.json();
-                    console.log('System health:', data.status);
-                    
-                    // Simulate some metrics (in production, get from database)
-                    document.getElementById('voice-calls').textContent = Math.floor(Math.random() * 20);
-                    document.getElementById('sms-messages').textContent = Math.floor(Math.random() * 50);
-                } catch (error) {
-                    console.error('Error updating metrics:', error);
-                }
-            }
-            
-            // Update metrics every 30 seconds
-            setInterval(updateMetrics, 30000);
-            updateMetrics(); // Initial load
-        </script>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=html_content)
-
-# ================================
 # BACKGROUND TASKS
 # ================================
 
@@ -693,23 +511,28 @@ async def log_voice_interaction(interaction_data: Dict[str, Any]):
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize system with voice support"""
-    logger.info("🚀 Starting LocalAI Assistant with Voice & SMS support...")
+    """Initialize system with voice support and dashboard"""
+    logger.info("🚀 Starting LocalAI Assistant with Professional Dashboard...")
     logger.info("=" * 70)
     
     success = initialize_components()
     
     if success:
         logger.info("=" * 70)
-        logger.info("🎉 LocalAI Assistant Voice & SMS ready!")
+        logger.info("🎉 LocalAI Professional Assistant ready!")
         logger.info("🎙️ Voice calls: ENABLED")
         logger.info("📱 SMS messages: ENABLED") 
         logger.info("🤖 Bilingual AI: French/English")
         logger.info("🔄 Smart transfers: ACTIVE")
-        logger.info("📊 Dashboard: http://localhost:8000/dashboard")
+        logger.info("📊 Professional Dashboard: AVAILABLE")
+        logger.info("📈 Real-time Analytics: ENABLED")
+        logger.info("")
+        logger.info("🌐 Access Points:")
+        logger.info("📊 Dashboard: http://localhost:8000/dashboard/web")
         logger.info("🔍 Health: http://localhost:8000/health")
         logger.info("📞 Voice webhook: http://localhost:8000/webhook/voice")
         logger.info("📱 SMS webhook: http://localhost:8000/webhook/sms")
+        logger.info("🔧 API docs: http://localhost:8000/docs")
         logger.info("=" * 70)
     else:
         logger.error("❌ Failed to initialize - check your configuration")
@@ -724,10 +547,11 @@ async def shutdown_event():
 # ================================
 
 if __name__ == "__main__":
-    print("🎙️📱 LocalAI Assistant - Voice & SMS Support")
+    print("🎙️📱 LocalAI Assistant - Professional Dashboard")
     print("🇨🇦 Bilingual Quebec French/English AI")
-    print("🔧 Voice calls + SMS messages + Smart transfers")
-    print("🚀 Starting enhanced server...")
+    print("📊 Professional Business Management Interface")
+    print("🔧 Voice calls + SMS messages + Smart transfers + Analytics")
+    print("🚀 Starting professional server...")
     
     uvicorn.run(
         "main:app",
@@ -736,4 +560,3 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
-                    
