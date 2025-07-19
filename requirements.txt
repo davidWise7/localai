@@ -1,8 +1,58 @@
-# Minimal requirements for voice AI
+# LocalAI Assistant - Railway Deployment Requirements
+# Core Framework
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 python-dotenv==1.0.0
+websockets==12.0
+
+# AI & Machine Learning
 google-generativeai==0.3.2
+
+# Google Cloud APIs for Voice Processing
+google-cloud-speech==2.21.0
+google-cloud-texttospeech==2.16.3
+google-auth==2.23.4
+google-auth-oauthlib==1.1.0
+google-auth-httplib2==0.1.1
+
+# Database
+sqlalchemy==2.0.23
+
+# Twilio (SMS + Voice + Real-time)
 twilio==8.10.0
+
+# HTTP Requests & WebSockets
+httpx==0.25.2
 requests==2.31.0
+
+# Facebook Integration
+facebook-sdk==3.1.0
+
+# Data Processing
+pandas==2.1.3
+numpy==1.25.2
+
+# Date/Time
+python-dateutil==2.8.2
+
+# Logging & Monitoring
+structlog==23.2.0
+
+# Development & Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+
+# Security
+cryptography==41.0.8
+
+# Environment
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Railway Deployment
+gunicorn==21.2.0
+
+# Utility
+pytz==2023.3
+jsonschema==4.20.0
