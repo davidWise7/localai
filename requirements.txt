@@ -1,4 +1,4 @@
-# LocalAI Assistant - Railway Deployment Requirements
+# LocalAI Assistant - Complete Voice + SMS System
 # Core Framework
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
@@ -9,12 +9,12 @@ websockets==12.0
 # AI & Machine Learning
 google-generativeai==0.3.2
 
-# Google Cloud APIs for Voice Processing
-google-cloud-speech==2.21.0
-google-cloud-texttospeech==2.16.3
-google-auth==2.23.4
-google-auth-oauthlib==1.1.0
-google-auth-httplib2==0.1.1
+# Google Cloud APIs for Voice Processing (Fixed versions)
+google-cloud-speech==2.19.0
+google-cloud-texttospeech==2.14.1
+google-auth==2.17.3
+google-auth-oauthlib==1.0.0
+google-auth-httplib2==0.1.0
 
 # Database
 sqlalchemy==2.0.23
@@ -56,3 +56,7 @@ gunicorn==21.2.0
 # Utility
 pytz==2023.3
 jsonschema==4.20.0
+
+# Build dependencies
+setuptools==68.0.0
+wheel==0.40.0
