@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalAI Business Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-areas: 
+                "sidebar header"
+                "sidebar main";
+            grid-template-columns: 280px 1fr;
+            grid-template-rows: auto 1fr;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            grid-area: sidebar;
+            background: #1e293b;
+            color: white;
+            padding: 2rem 0;
+        }
+
+        .logo {
+            padding: 0 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .logo h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin: 0.5rem 0;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 1rem 2rem;
+            color: #cbd5e1;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: #334155;
+            color: white;
+            border-right: 3px solid #3b82f6;
+        }
+
+        .nav-icon {
+            margin-right: 0.75rem;
+            font-size: 1.2rem;
+        }
+
+        .header {
+            grid-area: header;
+            background: white;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .main-content {
+            grid-area: main;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #3b82f6;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .alert {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .alert-urgent {
+            background: #fffbeb;
+            border-color: #fed7aa;
+        }
+
+        .alert-info {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+        }
+
+        .live-feed {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .feed-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .feed-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .feed-icon.voice {
+            background: #dbeafe;
+            color: #3b82f6;
+        }
+
+        .feed-icon.sms {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .feed-content {
+            flex: 1;
+        }
+
+        .feed-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .feed-description {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .feed-time {
+            color: #94a3b8;
+            font-size: 0.8rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 1.5rem;
+        }
+
+        .tab {
+            padding: 1rem 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            color: #64748b;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .chart-container {
+            height: 300px;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="logo">
+                <h1>🎙️ LocalAI</h1>
+                <p style="font-size: 0.9rem; opacity: 0.7;">Business Dashboard</p>
+            </div>
+            
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="#overview" class="nav-link active" data-tab="overview">
+                        <span class="nav-icon">📊</span>
+                        Overview
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#live" class="nav-link" data-tab="live">
+                        <span class="nav-icon">🔴</span>
+                        Live Feed
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#analytics" class="nav-link" data-tab="analytics">
+                        <span class="nav-icon">📈</span>
+                        Analytics
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#customers" class="nav-link" data-tab="customers">
+                        <span class="nav-icon">👥</span>
+                        Customers
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#settings" class="nav-link" data-tab="settings">
+                        <span class="nav-icon">⚙️</span>
+                        Settings
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#training" class="nav-link" data-tab="training">
+                        <span class="nav-icon">🧠</span>
+                        AI Training
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Header -->
+        <header class="header">
+            <div>
+                <h2>Business Dashboard</h2>
+                <p style="color: #64748b;">Monitor your AI assistant performance</p>
+            </div>
+            
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span>System Online</span>
+                <span style="color: #64748b; margin-left: 1rem;">+1 450 234 9148</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Overview Tab -->
+            <div id="overview" class="tab-content active">
+                <!-- Alerts -->
+                <div id="alerts-container">
+                    <div class="alert alert-urgent">
+                        <strong>🚨 3 customers waiting for transfer</strong>
+                        <p>Review escalated conversations and respond promptly.</p>
+                    </div>
+                </div>
+
+                <!-- Metrics Grid -->
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Today's Calls</span>
+                            <span>📞</span>
+                        </div>
+                        <div class="metric-value" id="voice-calls-today">12</div>
+                        <div class="metric-label">+3 from yesterday</div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">SMS Messages</span>
+                            <span>💬</span>
+                        </div>
+                        <div class="metric-value" id="sms-today">28</div>
+                        <div class="metric-label">+7 from yesterday</div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">AI Success Rate</span>
+                            <span>🤖</span>
+                        </div>
+                        <div class="metric-value" id="ai-success-rate">87%</div>
+                        <div class="metric-label">Without escalation</div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">French Interactions</span>
+                            <span>🇫🇷</span>
+                        </div>
+                        <div class="metric-value" id="french-percentage">65%</div>
+                        <div class="metric-label">Quebec customers</div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Quick Actions</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <button class="btn btn-primary" onclick="openBusinessSettings()">
+                            ⚙️ Update Business Info
+                        </button>
+                        <button class="btn btn-secondary" onclick="downloadReports()">
+                            📊 Download Reports
+                        </button>
+                        <button class="btn btn-secondary" onclick="trainAI()">
+                            🧠 Train AI Responses
+                        </button>
+                        <button class="btn btn-secondary" onclick="testSystem()">
+                            🧪 Test System
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Feed Tab -->
+            <div id="live" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Live Customer Interactions</span>
+                        <button class="btn btn-secondary" onclick="refreshFeed()">🔄 Refresh</button>
+                    </div>
+                    
+                    <div class="live-feed" id="live-feed">
+                        <!-- Feed items will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Pending Actions</span>
+                    </div>
+                    
+                    <div id="pending-actions">
+                        <div class="feed-item">
+                            <div class="feed-icon voice">📞</div>
+                            <div class="feed-content">
+                                <div class="feed-title">Customer Transfer Request</div>
+                                <div class="feed-description">Customer wants to speak with manager about pricing</div>
+                                <div class="feed-time">2 minutes ago</div>
+                            </div>
+                            <button class="btn btn-primary">Handle</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Tab -->
+            <div id="analytics" class="tab-content">
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Weekly Performance</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="performance-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Popular Questions</span>
+                        </div>
+                        <div>
+                            <div style="margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>Business hours</span>
+                                    <span style="font-weight: 600;">34%</span>
+                                </div>
+                                <div style="width: 100%; height: 8px; background: #f1f5f9; border-radius: 4px; margin-top: 0.5rem;">
+                                    <div style="width: 34%; height: 100%; background: #3b82f6; border-radius: 4px;"></div>
+                                </div>
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>Pricing information</span>
+                                    <span style="font-weight: 600;">28%</span>
+                                </div>
+                                <div style="width: 100%; height: 8px; background: #f1f5f9; border-radius: 4px; margin-top: 0.5rem;">
+                                    <div style="width: 28%; height: 100%; background: #10b981; border-radius: 4px;"></div>
+                                </div>
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>Appointment booking</span>
+                                    <span style="font-weight: 600;">22%</span>
+                                </div>
+                                <div style="width: 100%; height: 8px; background: #f1f5f9; border-radius: 4px; margin-top: 0.5rem;">
+                                    <div style="width: 22%; height: 100%; background: #f59e0b; border-radius: 4px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customers Tab -->
+            <div id="customers" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Recent Customer Interactions</span>
+                        <input type="text" placeholder="Search customers..." class="form-input" style="max-width: 250px;">
+                    </div>
+                    
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid #e2e8f0;">
+                                    <th style="text-align: left; padding: 1rem;">Customer</th>
+                                    <th style="text-align: left; padding: 1rem;">Type</th>
+                                    <th style="text-align: left; padding: 1rem;">Language</th>
+                                    <th style="text-align: left; padding: 1rem;">Intent</th>
+                                    <th style="text-align: left; padding: 1rem;">Status</th>
+                                    <th style="text-align: left; padding: 1rem;">Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customers-table">
+                                <!-- Customer data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="settings" class="tab-content">
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Business Information</span>
+                        </div>
+                        
+                        <form id="business-form">
+                            <div class="form-group">
+                                <label class="form-label">Business Name</label>
+                                <input type="text" class="form-input" value="Bella Hair Salon" id="business-name">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Business Hours</label>
+                                <input type="text" class="form-input" value="Mon-Sat 9am-7pm, Closed Sunday" id="business-hours">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Address</label>
+                                <input type="text" class="form-input" value="123 Main Street, Anytown, ST 12345" id="business-address">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Services (comma separated)</label>
+                                <input type="text" class="form-input" value="haircut, coloring, styling, treatment" id="business-services">
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Transfer Settings</span>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Transfer Phone Number</label>
+                            <input type="tel" class="form-input" placeholder="+1 450 123 4567" id="transfer-number">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Auto-transfer Triggers</label>
+                            <textarea class="form-input" rows="3" placeholder="complaint, refund, manager, complex issue">complaint, refund, manager, complex issue</textarea>
+                        </div>
+                        
+                        <button class="btn btn-primary">Update Transfer Settings</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Training Tab -->
+            <div id="training" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Train AI Responses</span>
+                    </div>
+                    
+                    <div class="tabs">
+                        <button class="tab active" data-target="faq-training">FAQ Training</button>
+                        <button class="tab" data-target="response-training">Response Training</button>
+                    </div>
+                    
+                    <div id="faq-training" class="tab-content active">
+                        <div class="form-group">
+                            <label class="form-label">Add New FAQ</label>
+                            <input type="text" class="form-input" placeholder="Customer question..." id="faq-question">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">AI Response (English)</label>
+                            <textarea class="form-input" rows="3" placeholder="English response..." id="faq-response-en"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">AI Response (French)</label>
+                            <textarea class="form-input" rows="3" placeholder="Réponse française..." id="faq-response-fr"></textarea>
+                        </div>
+                        
+                        <button class="btn btn-primary">Add FAQ</button>
+                    </div>
+                    
+                    <div id="response-training" class="tab-content">
+                        <div class="form-group">
+                            <label class="form-label">Improve AI Response</label>
+                            <select class="form-input">
+                                <option>Select conversation to improve...</option>
+                                <option>Voice call - "What are your hours?"</option>
+                                <option>SMS - "Can I book an appointment?"</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Current Response</label>
+                            <textarea class="form-input" rows="3" readonly>We're open Monday through Saturday from 9am to 7pm...</textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Improved Response</label>
+                            <textarea class="form-input" rows="3" placeholder="Enter improved response..."></textarea>
+                        </div>
+                        
+                        <button class="btn btn-primary">Update Response</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for business settings -->
+    <div id="business-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Quick Business Update</h3>
+            <div class="form-group">
+                <label class="form-label">Update Business Hours</label>
+                <input type="text" class="form-input" placeholder="Mon-Fri 9am-6pm">
+            </div>
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button class="btn btn-primary">Save</button>
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab navigation
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                
+                // Remove active class from all nav links and tab contents
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                
+                // Add active class to clicked link and corresponding tab
+                link.classList.add('active');
+                const tabId = link.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // Sub-tab navigation
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetId = tab.getAttribute('data-target');
+                
+                // Remove active class from tabs and content
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab and target content
+                tab.classList.add('active');
+                document.getElementById(targetId).classList.add('active');
+            });
+        });
+
+        // Real-time data updates
+        function updateDashboard() {
+            // Simulate real-time updates
+            const voiceCalls = Math.floor(Math.random() * 50) + 10;
+            const smsMessages = Math.floor(Math.random() * 100) + 20;
+            const successRate = Math.floor(Math.random() * 15) + 85;
+            const frenchPercentage = Math.floor(Math.random() * 20) + 60;
+            
+            document.getElementById('voice-calls-today').textContent = voiceCalls;
+            document.getElementById('sms-today').textContent = smsMessages;
+            document.getElementById('ai-success-rate').textContent = successRate + '%';
+            document.getElementById('french-percentage').textContent = frenchPercentage + '%';
+        }
+
+        // Live feed updates
+        function updateLiveFeed() {
+            const liveFeed = document.getElementById('live-feed');
+            const feedItems = [
+                {
+                    type: 'voice',
+                    icon: '📞',
+                    title: 'Voice Call - Quebec Customer',
+                    description: 'Asked about business hours in French',
+                    time: 'Just now'
+                },
+                {
+                    type: 'sms',
+                    icon: '💬',
+                    title: 'SMS - Booking Request',
+                    description: 'Wants to book haircut for tomorrow',
+                    time: '2 minutes ago'
+                },
+                {
+                    type: 'voice',
+                    icon: '📞',
+                    title: 'Voice Call - Transfer Request',
+                    description: 'Customer wants to speak with manager',
+                    time: '5 minutes ago'
+                }
+            ];
+            
+            liveFeed.innerHTML = feedItems.map(item => `
+                <div class="feed-item">
+                    <div class="feed-icon ${item.type}">${item.icon}</div>
+                    <div class="feed-content">
+                        <div class="feed-title">${item.title}</div>
+                        <div class="feed-description">${item.description}</div>
+                        <div class="feed-time">${item.time}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Customer table updates
+        function updateCustomersTable() {
+            const table = document.getElementById('customers-table');
+            const customers = [
+                {
+                    phone: '***-8896',
+                    type: 'Voice',
+                    language: 'French',
+                    intent: 'Hours inquiry',
+                    status: 'Resolved',
+                    time: '2 min ago'
+                },
+                {
+                    phone: '***-1234',
+                    type: 'SMS',
+                    language: 'English',
+                    intent: 'Booking',
+                    status: 'In progress',
+                    time: '5 min ago'
+                },
+                {
+                    phone: '***-5678',
+                    type: 'Voice',
+                    language: 'French',
+                    intent: 'Complaint',
+                    status: 'Escalated',
+                    time: '10 min ago'
+                }
+            ];
+            
+            table.innerHTML = customers.map(customer => `
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 1rem;">${customer.phone}</td>
+                    <td style="padding: 1rem;">${customer.type}</td>
+                    <td style="padding: 1rem;">${customer.language}</td>
+                    <td style="padding: 1rem;">${customer.intent}</td>
+                    <td style="padding: 1rem;">
+                        <span style="padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; 
+                                     background: ${customer.status === 'Resolved' ? '#dcfce7' : customer.status === 'Escalated' ? '#fef2f2' : '#fffbeb'};
+                                     color: ${customer.status === 'Resolved' ? '#166534' : customer.status === 'Escalated' ? '#dc2626' : '#92400e'};">
+                            ${customer.status}
+                        </span>
+                    </td>
+                    <td style="padding: 1rem; color: #64748b;">${customer.time}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Modal functions
+        function openBusinessSettings() {
+            document.getElementById('business-modal').classList.remove('hidden');
+        
